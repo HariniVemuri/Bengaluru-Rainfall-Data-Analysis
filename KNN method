@@ -7,12 +7,12 @@ import random
 
 #Importing data for Training and Filling
 
-raw_data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5 MATLAB.xlsx') # importing the available data
+raw_data = pd.read_excel('imd5 MATLAB.xlsx') # importing the available data
 index_CF = raw_data[(raw_data['CF'] == 0)].index    #identifying non- rainy days
 raw_data.drop(index_CF, inplace = True) #drop non - rainy days
 data1 = raw_data.drop(['Date'], axis =1)
 
-fill_data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5 NAN.xlsx')  # Importing data to be filled
+fill_data = pd.read_excel('imd5 NAN.xlsx')  # Importing data to be filled
 index_IMD = fill_data[(fill_data['daily IMD'] == 0)].index    #identifying non- rainy days
 fill_data.drop(index_IMD, inplace = True)    #drop non - rainy days
 data2 = fill_data.drop(['Date'], axis =1)
@@ -145,5 +145,5 @@ for z in range(0,len(data2)):
     else:
         aj.iloc[z] = mo
 
-fill_data.to_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5_missing_nonrainy.xlsx')
-aj.to_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5_filled_python.xlsx')
+fill_data.to_excel('imd5_missing_nonrainy.xlsx')
+aj.to_excel('imd5_filled_python.xlsx')
