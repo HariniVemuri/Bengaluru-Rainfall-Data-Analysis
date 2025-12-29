@@ -1,0 +1,126 @@
+setwd("Extremal_coefficient") #setting the directory
+getwd()   #calling the directory
+
+#install.packages("readxl")  #Intalling package to read excel file
+library("readxl")          #calling the package
+#install.packages("viridis")     # Installing Viridis and SpatialExtremes packages
+library("viridis")
+#install.packages("SpatialExtremes")
+library("SpatialExtremes")
+
+n_sites <- 29  #No. of KSNDMC locations are specified here
+location <- read_excel("KSNDMC_29TRG_Location.xlsx") #reading the excel file with 29 KSNDMC TRG Locations
+location <- subset(location, select = -c(TRG_ID))
+colnames(location) <- c("lat", "lon")
+location <- as.matrix(location)
+#location <- 111*location
+
+
+# Calling annual max files for each station and storing rainfall data in each column of Amax
+Amax <- data.frame(matrix(nrow = 53, ncol = 29)) # defining data frame with number of columns equal to no. of stations
+colnames(Amax) <- c("99","680", "684", "801", "890", "1018", "1024", "1031", "1035", "1050", "2300", "2301", "2302", "2303", "2304", "2305", "2306", "2307", "2308", "2309", "2310", "2314", "2315", "2316", "2317", "2318", "2323", "2364", "2365")
+
+for (x in colnames(Amax)){
+  files <- list.files(path = "24hr", pattern = paste0(x,"_24hrmax.xlsx" ), full.names = TRUE)
+  data<- lapply(files, read_excel)
+  Amax[[x]] <- data[[1]][2]
+}
+Amax <- as.matrix(Amax)
+
+
+#Fitting maxstable process to the data using spatial GEV and find which trend surface is suitable using TIC, eigen values, aveno
+# Fit for different maxstable process to find which maxstable process is better
+
+#Schlather model
+fit0 <- fitmaxstab(Amax, location, "powexp", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit1 <- fitmaxstab(Amax, location, "whitmat", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit2 <- fitmaxstab(Amax, location, "cauchy", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)   #least
+
+#Smith model
+fit4 <- fitmaxstab(Amax, location, cov.mod = "gauss", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+
+#Brown- Resnick
+fit5 <- fitmaxstab(Amax, location, cov.mod = "brown", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+
+#Extremal- t
+fit6 <- fitmaxstab(Amax, location, "tpowexp", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit7 <- fitmaxstab(Amax, location, "twhitmat", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit8 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)   #least # among all
+
+#Geometric- Gaussian
+fit91 <- fitmaxstab(Amax, location, "gpowexp", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit92 <- fitmaxstab(Amax, location, "gwhitmat", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)
+fit93 <- fitmaxstab(Amax, location, "gcauchy", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)  # least
+
+
+tic1 <- TIC(fit0, fit1, fit2)
+tic2 <- TIC( fit6, fit7, fit8)
+tic3 <- TIC(fit91, fit92, fit93)
+min(tic1)
+print(tic1)
+print(tic2)
+print(tic3)
+print(TIC(fit4))
+print(TIC(fit5))
+
+
+fit00 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ 1, scale.form = y ~ 1, shape.form = y ~ 1)  #Best fit
+fit10 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat, scale.form = y ~ 1, shape.form = y ~ 1)
+fit01 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ 1, scale.form = y ~ lat, shape.form = y ~ 1)
+fit11 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat, scale.form = y ~ lat, shape.form = y ~ 1)
+fit20 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lon, scale.form = y ~ 1, shape.form = y ~ 1)
+fit21 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lon, scale.form = y ~ lat, shape.form = y ~ 1)
+fit02 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ 1, scale.form = y ~ lon, shape.form = y ~ 1)
+fit12 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat, scale.form = y ~ lon, shape.form = y ~ 1)
+fit22 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lon, scale.form = y ~ lon, shape.form = y ~ 1)
+fit30 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat + lon, scale.form = y ~ 1 , shape.form = y ~ 1 )
+fit31 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat + lon, scale.form = y ~ lat , shape.form = y ~ 1 )
+fit32 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat + lon, scale.form = y ~ lon , shape.form = y ~ 1 )
+fit03 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ 1, scale.form = y ~ lat + lon , shape.form = y ~ 1 )
+fit13 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat, scale.form = y ~ lat + lon , shape.form = y ~ 1 )
+fit23 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lon, scale.form = y ~ lat + lon , shape.form = y ~ 1 )
+fit33 <- fitmaxstab(Amax, location, "tcauchy", loc.form = y ~ lat + lon, scale.form = y ~ lat + lon , shape.form = y ~ 1 )
+tic <- TIC(fit00, fit01, fit02, fit03, fit10, fit11, fit12, fit13, fit20, fit21, fit22, fit23, fit30, fit31, fit32, fit33)
+min(tic)
+print(tic)
+plot(fit00)
+
+
+#Finding spatial Extremal coefficient
+fmadogram(fitted = fit00, which = "mado")  # plotting Fmadogram 
+f <- fmadogram(fitted = fit00, which = "ext")   # plotting Extremal Coefficient
+
+write_xlsx(data.frame(f), path = "Ext_Coeff_24hr.xlsx", col_names = TRUE )
+
+# Load necessary library
+#install.packages("extRemes")
+library(extRemes)
+
+# Initialize a vector to store TIC values for each location
+tic_values <- numeric(n_sites)
+
+# Loop through each column in Amax (each location) and fit GEV
+for (i in 1:n_sites) {
+  # Extract the annual maximum rainfall data for the location
+  rainfall_data <- Amax[, i]
+  
+  # Fit the GEV distribution
+  gev_fit <- fevd(rainfall_data, type = "GEV", method = "Lmoments")
+  
+  # Calculate log-likelihood (negative log-likelihood is stored in gev_fit$results$value)
+  fitted_params <- gev_fit$results
+  logLik_value <- sum(dgev(rainfall_data, loc = fitted_params[1], scale = fitted_params[2], shape = fitted_params[3], log = TRUE))
+  
+  # Calculate TIC: -2 * log-likelihood + 2 * number of parameters (p = 3 for GEV)
+  p <- length(coef(gev_fit))  # Number of parameters (3 for GEV)
+  tic <- -2 * logLik_value + 2 * p
+  
+  # Store the TIC value
+  tic_values[i] <- tic
+}
+
+# Calculate the average TIC across all locations
+avg_tic <- mean(tic_values)
+
+# Print the average TIC
+print(avg_tic)
