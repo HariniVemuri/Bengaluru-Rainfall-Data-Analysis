@@ -1,0 +1,149 @@
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+from math import sqrt
+import random
+
+#Importing data for Training and Filling
+
+raw_data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5 MATLAB.xlsx') # importing the available data
+index_CF = raw_data[(raw_data['CF'] == 0)].index    #identifying non- rainy days
+raw_data.drop(index_CF, inplace = True) #drop non - rainy days
+data1 = raw_data.drop(['Date'], axis =1)
+
+fill_data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5 NAN.xlsx')  # Importing data to be filled
+index_IMD = fill_data[(fill_data['daily IMD'] == 0)].index    #identifying non- rainy days
+fill_data.drop(index_IMD, inplace = True)    #drop non - rainy days
+data2 = fill_data.drop(['Date'], axis =1)
+
+prob_mc = 0.4
+pc = 0.1   # probability of crossover
+pm = 0.01  # probability of mutation
+split_ratio = 0.8 # To split raw_data for calibration and validation
+k = round(sqrt(len(raw_data)))  # Number of nearest neighbors to be find is equal to square root of length of data availale
+k_min = 0
+k_max = k-1
+
+#Obtaining training and testing set from raw data by split ratio 0.8
+
+t_cols = data1.shape[1]  # total Number of columns in the raw_data
+x = round(len(data1)*split_ratio) # 80% of raw data is used for training
+y=[i for i in data1.index] 
+train_index = random.sample(y,x)     # random values are generated without replacement to get index of the training set
+test_index = np.setdiff1d(y, train_index) # index for testing set which are not in training set
+
+train_set= pd.DataFrame(data1,columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily','daily IMD', 'CF'], index = train_index)
+test_set = pd.DataFrame(data1,columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily','daily IMD', 'CF'], index = test_index)
+train_set = train_set.reset_index()
+test_set = test_set.reset_index()
+
+#Training and testing KNN algorithm using train set and test set
+aj = pd.DataFrame(0.0,columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily'], index = range(0,len(test_set)))
+eps = np.random.uniform(0,1,24)  # generating 24 random numbers using unifrom distribution between 0 and 1. Since 24 hourly values are available
+for z in range(0,len(test_set)):
+    test_position = z    #Giving test position
+    target = test_set['CF'][z]  #target values are obtained from test set
+    dist = pd.DataFrame(0.0,columns = ['train_index', 'distance'], index = range(0,len(train_set)))  
+    dist['train_index'] = train_set['index']  
+    for p in range(0,len(train_set)):
+        dist['distance'][p] = (train_set['CF'][p]-target)**2  # Finding Euclidean distance between a target value and all daily values from train set
+    dist1 = dist.sort_values("distance")  # sort distances in ascending order
+    k_order1 = dist1['train_index'].iloc[k_min] #obtaining the index of k_min row
+    k_order2 = dist1['train_index'].iloc[k_max] #obtaining the index of k_max row
+    set_1 = train_set[train_set['index'] == k_order1] # Obtaining hourly values for k_order1
+    set_2 = train_set[train_set['index'] == k_order2] # Obtaining hourly values for k_order2
+    
+    # Crossover
+    co = [[0]*25]
+    for q in range(0,24):
+        if eps[q] <pc:
+            co[0][q] = set_2.iloc[0][q+1]
+        else:
+            co[0][q] = set_1.iloc[0][q+1]
+            
+    # Mutation 
+    mo = [[0]*25]
+    for r in range(0,24):
+        if eps[r] < pm:
+            mo[0][r] = co[0][r]*eps[r]+co[0][r]
+        else:
+            mo[0][r] = co[0][r]
+    summo = sum(mo[0])  #Adding the hourly values to get daily rainfall value
+    mo[0][24] = summo
+    mo = pd.DataFrame(mo, columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily'])
+    
+    #Altering Hourly Values to get the sum of hourly values equal to traget
+    if summo > 0:
+        aj.iloc[z] = mo*target/summo
+    else:
+        aj.iloc[z] = mo
+
+# Finding NSE for hourly values 
+bj = test_set.drop(['daily', 'daily IMD','index','CF'], axis = 1)
+cj = aj.drop(['daily'], axis = 1)
+dj = (cj-bj)**2
+diff = dj.to_numpy().sum()
+ej = pd.DataFrame(test_set['CF']/24)
+fj = bj.sub(ej['CF'], axis = 0)
+gj = fj**2
+diff_mean = gj.to_numpy().sum()
+total = diff / diff_mean
+NSE = 1-total
+print(eps,diff,diff_mean,NSE)
+            
+#finding hourly values for daily values
+lj = (aj['daily']-test_set['daily'])**2
+diff1 = lj.to_numpy().sum()
+mj = test_set['daily'].to_numpy().mean()
+nj = (aj['daily']-mj)**2
+diff_mean1 = nj.to_numpy().sum()
+total1 = diff1/diff_mean1
+NSE1 = 1- total1
+print(diff1, diff_mean1,total1,NSE1)
+
+## Filling the gaps in the data using the best NSE values
+data1 = data1.reset_index()
+data2 = data2.reset_index()
+filled_data = pd.DataFrame(0.0,columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily'], index = range(0,len(data2)))
+eps1 = eps  # generating 24 random numbers using unifrom distribution between 0 and 1. Since 24 hourly values are available
+for z in range(0,len(data2)):
+    test_position = z    #Giving test position
+    target = data2['daily IMD'][z]  #target values are obtained from fill set
+    dist = pd.DataFrame(0.0,columns = ['index', 'distance'], index = range(0,len(data1)))  
+    dist['index'] = data1['index']  
+    for p in range(0,len(data1)):
+        dist['distance'][p] = (data1['CF'][p]-target)**2  # Finding Euclidean distance between a target value and all daily values from raw data set
+    dist1 = dist.sort_values("distance")  # sort distances in ascending order
+    k_order1 = dist1['index'].iloc[k_min] #obtaining the index of k_min row
+    k_order2 = dist1['index'].iloc[k_max] #obtaining the index of k_max row
+    set_1 = data1[data1['index'] == k_order1] # Obtaining hourly values for k_order1
+    set_2 = data1[data1['index'] == k_order2] # Obtaining hourly values for k_order2
+    
+    # Crossover
+    co = [[0]*25]
+    for q in range(0,24):
+        if eps[q] <pc:
+            co[0][q] = set_2.iloc[0][q+1]
+        else:
+            co[0][q] = set_1.iloc[0][q+1]
+            
+    # Mutation 
+    mo = [[0]*25]
+    for r in range(0,24):
+        if eps[r] < pm:
+            mo[0][r] = co[0][r]*eps[r]+co[0][r]
+        else:
+            mo[0][r] = co[0][r]
+    summo = sum(mo[0])  #Adding the hourly values to get daily rainfall value
+    mo[0][24] = summo
+    mo = pd.DataFrame(mo, columns = ['hr1','hr2','hr3','hr4','hr5','hr6','hr7','hr8','hr9','hr10','hr11','hr12','hr13','hr14','hr15','hr16','hr17','hr18','hr19','hr20','hr21','hr22','hr23','hr24','daily'])
+    
+    #Altering Hourly Values to get the sum of hourly values equal to traget
+    if summo > 0:
+        aj.iloc[z] = mo*target/summo
+    else:
+        aj.iloc[z] = mo
+
+fill_data.to_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5_missing_nonrainy.xlsx')
+aj.to_excel('D:/IISC notes/MTech Project/data/IMD station data/imd5_filled_python.xlsx')
