@@ -1,0 +1,102 @@
+import pandas as pd
+import numpy as np
+from pandas import DataFrame
+import matplotlib.pyplot as plt
+from scipy.stats import genextreme as gev
+import math
+
+k = (1,3,6,9,12,15,18,21,24)
+df = pd.DataFrame(0.0, columns = ['Shape','Location','Scale'],index = k)
+df1 = pd.DataFrame(0.0, columns = ['NCM1', 'NCM2', 'NCM3'], index = k)
+df2 = pd.DataFrame(0.0, columns = ['NCM1', 'NCM2', 'NCM3'], index = k)
+s = (5)
+for tc in s:
+    t = (1,3,6,9,12,15,18,21,24)
+    for i in t:
+        data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/hourly/imd'+str(tc)+'_'+str(i)+'hrmax.xlsx')
+        shape,loc,scale = gev.fit(data['RAINFALL'])
+        df['Shape'][i] = shape
+        df['Location'][i] = loc
+        df['Scale'][i] = scale
+        df1['NCM1'][i] = pow((loc+(scale/shape)),1) + pow(-1,1) * pow((scale/shape),1) * math.gamma(1+shape*1)
+        df2['NCM1'][i] = (df1['NCM1'][i]) / i
+        df1['NCM2'][i] = pow((loc+(scale/shape)),2) + pow(-1,2) * pow((scale/shape),2) * math.gamma(1+shape*2) + 2 * sum(pow(-1,x)*pow((scale/shape),x)*pow((loc+(scale/shape)),2-x)*math.gamma(1+x*shape) for x in [1])
+        df2['NCM2'][i] = (df1['NCM2'][i]) / (pow(i,2))
+        df1['NCM3'][i] = pow((loc+(scale/shape)),3) + pow(-1,3) * pow((scale/shape),3) * math.gamma(1+shape*3) + 3 * sum(pow(-1,x)*pow((scale/shape),x)*pow((loc+(scale/shape)),3-x)*math.gamma(1+x*shape) for x in [1,2])
+        df2['NCM3'][i] = (df1['NCM3'][i]) / (pow(i,3))
+    
+    df.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' parameters.xlsx') 
+    df1.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCM.xlsx')
+    df2.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCM_t.xlsx')
+    
+    fig, ax1 = plt.subplots()
+    z = np.polyfit(np.log10(df2.index), np.log10(df2['NCM1']), 1).round(decimals=3)
+    p = np.poly1d(z)
+    plt.plot(np.log10(df2.index),p(np.log10(df2.index)),"w")
+    y = np.polyfit(np.log10(df2.index), np.log10(df2['NCM2']), 1).round(decimals=3)
+    q = np.poly1d(y)
+    plt.plot(np.log10(df2.index),q(np.log10(df2.index)),"w")
+    u = np.polyfit(np.log10(df2.index), np.log10(df2['NCM3']), 1).round(decimals=3)
+    r = np.poly1d(u)
+    plt.text(1.2,1,"y=%.2fx+%.2f"%(z[0],z[1]), ha = "right")
+    plt.text(1.2,2,"y=%.2fx+%.2f"%(y[0],y[1]), ha = "right")
+    plt.text(1.2,3,"y=%.2fx+%.2f"%(u[0],u[1]), ha = "right")
+    ax1.plot(np.log10(df2.index),np.log10(df2['NCM1']),label = 'NCM1')
+    ax1.plot(np.log10(df2.index),np.log10(df2['NCM2']),label = 'NCM2')
+    ax1.plot(np.log10(df2.index),np.log10(df2['NCM3']),label = 'NCM3')
+    ax1.legend()
+    plt.xlabel('Time (hrs)')
+    plt.ylabel('NCM')
+    plt.title('IMD station 4329%d' %tc)
+    plt.savefig('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCMvsTime.png' )
+
+B5 = 0.8141
+kk = (2,5,10,25,50,100)
+df = pd.DataFrame(0.0, columns = [''],index = k)
+df1 = pd.DataFrame(0.0, columns = [''],index = k)
+s = (5)
+t = (1,3,6,9,12,15,18,21,24)
+u = (0.167,0.25,0.5,0.75)
+return_periods = np.array([2,5,10,25,50,100])
+for tc in s:
+    data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' parameters.xlsx')
+    data = data.set_index('Hour')
+    if tc == 5:
+        B = B5
+    for j in u:
+            Shape = data['Shape'][1]
+            Loc = pow(j,B)*data['Location'][1]
+            Scale = pow(j,B)*data['Scale'][1]
+            return_levels = gev.isf(1/return_periods, Shape, Loc, Scale)
+            df[j] = return_levels
+            df1[j] = return_levels/j
+
+    for i in t:
+        shape = data['Shape'][i]
+        loc = data['Location'][i]
+        scale = data['Scale'][i]
+        return_levels = gev.isf(1/return_periods, shape, loc, scale)
+        df[i] = return_levels
+        df1[i] = return_levels/i
+    
+    df.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_levels.xlsx')
+    df1.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_intensity.xlsx')
+
+s = (5)
+for tc in s:
+    data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_intensity.xlsx')
+    data = data.set_index('Unnamed: 0')
+    data = data.drop(['Unnamed: 1'],axis = 1)
+    fig, ax1 = plt.subplots()
+    x = 10,15,30,45,60,180,360,540,720,900,1080,1260,1440
+    ax1.plot(x,data.iloc[0][0:13],label = 'T = 2 years')
+    ax1.plot(x,data.iloc[1][0:13],label = 'T = 5 years')
+    ax1.plot(x,data.iloc[2][0:13],label = 'T = 10 years')
+    ax1.plot(x,data.iloc[3][0:13],label = 'T = 25 years')
+    ax1.plot(x,data.iloc[4][0:13],label = 'T = 50 years')
+    ax1.plot(x,data.iloc[5][0:13],label = 'T = 100 years')
+    ax1.legend()
+    plt.xlabel('Duration (minutes)')
+    plt.ylabel('Intensity (mm/hr)')
+    plt.title('IDF curves of IMD station %d' %tc)
+    plt.savefig('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' IDFcurves.png' )
