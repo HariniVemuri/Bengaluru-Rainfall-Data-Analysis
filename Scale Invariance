@@ -13,7 +13,7 @@ s = (5)
 for tc in s:
     t = (1,3,6,9,12,15,18,21,24)
     for i in t:
-        data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/hourly/imd'+str(tc)+'_'+str(i)+'hrmax.xlsx')
+        data = pd.read_excel('imd'+str(tc)+'_'+str(i)+'hrmax.xlsx')
         shape,loc,scale = gev.fit(data['RAINFALL'])
         df['Shape'][i] = shape
         df['Location'][i] = loc
@@ -25,9 +25,9 @@ for tc in s:
         df1['NCM3'][i] = pow((loc+(scale/shape)),3) + pow(-1,3) * pow((scale/shape),3) * math.gamma(1+shape*3) + 3 * sum(pow(-1,x)*pow((scale/shape),x)*pow((loc+(scale/shape)),3-x)*math.gamma(1+x*shape) for x in [1,2])
         df2['NCM3'][i] = (df1['NCM3'][i]) / (pow(i,3))
     
-    df.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' parameters.xlsx') 
-    df1.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCM.xlsx')
-    df2.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCM_t.xlsx')
+    df.to_excel('IMD'+str(tc)+' parameters.xlsx') 
+    df1.to_excel('IMD'+str(tc)+' NCM.xlsx')
+    df2.to_excel('IMD'+str(tc)+' NCM_t.xlsx')
     
     fig, ax1 = plt.subplots()
     z = np.polyfit(np.log10(df2.index), np.log10(df2['NCM1']), 1).round(decimals=3)
@@ -48,7 +48,7 @@ for tc in s:
     plt.xlabel('Time (hrs)')
     plt.ylabel('NCM')
     plt.title('IMD station 4329%d' %tc)
-    plt.savefig('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' NCMvsTime.png' )
+    plt.savefig('IMD'+str(tc)+' NCMvsTime.png' )
 
 B5 = 0.8141
 kk = (2,5,10,25,50,100)
@@ -59,7 +59,7 @@ t = (1,3,6,9,12,15,18,21,24)
 u = (0.167,0.25,0.5,0.75)
 return_periods = np.array([2,5,10,25,50,100])
 for tc in s:
-    data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' parameters.xlsx')
+    data = pd.read_excel('IMD'+str(tc)+' parameters.xlsx')
     data = data.set_index('Hour')
     if tc == 5:
         B = B5
@@ -79,12 +79,12 @@ for tc in s:
         df[i] = return_levels
         df1[i] = return_levels/i
     
-    df.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_levels.xlsx')
-    df1.to_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_intensity.xlsx')
+    df.to_excel('IMD'+str(tc)+' return_levels.xlsx')
+    df1.to_excel('IMD'+str(tc)+' return_intensity.xlsx')
 
 s = (5)
 for tc in s:
-    data = pd.read_excel('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' return_intensity.xlsx')
+    data = pd.read_excel('IMD'+str(tc)+' return_intensity.xlsx')
     data = data.set_index('Unnamed: 0')
     data = data.drop(['Unnamed: 1'],axis = 1)
     fig, ax1 = plt.subplots()
@@ -99,4 +99,4 @@ for tc in s:
     plt.xlabel('Duration (minutes)')
     plt.ylabel('Intensity (mm/hr)')
     plt.title('IDF curves of IMD station %d' %tc)
-    plt.savefig('D:/IISC notes/MTech Project/data/IMD station data/filled data plots/IMD'+str(tc)+' IDFcurves.png' )
+    plt.savefig('IMD'+str(tc)+' IDFcurves.png' )
